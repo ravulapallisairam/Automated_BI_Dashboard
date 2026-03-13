@@ -6,13 +6,14 @@ import matplotlib.pyplot as plt
 import warnings
 from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import train_test_split
+from fpdf import FPDF
 
 warnings.filterwarnings("ignore")
 
-# PAGE CONFIG
-st.set_page_config(page_title="Automated BI Dashboard", layout="wide")
+# ---------------- PAGE CONFIG ----------------
+st.set_page_config(page_title="Automated AI BI Dashboard", layout="wide")
 
-# STYLE
+# ---------------- STYLE ----------------
 st.markdown("""
 <style>
 .stApp {
@@ -25,35 +26,35 @@ font-size:28px;
 </style>
 """, unsafe_allow_html=True)
 
-# TITLE
-st.markdown("# 🚀 Automated AI Business Intelligence Dashboard")
+st.title("🚀 Automated AI Business Intelligence Dashboard")
 
-# SIDEBAR
+# ---------------- SIDEBAR ----------------
 st.sidebar.title("Dashboard Menu")
 
 menu = st.sidebar.radio(
     "Navigate",
-    ["Overview","Charts","Correlation","AI Insights","Prediction","Data"]
+    [
+        "Overview",
+        "Auto Charts",
+        "Correlation",
+        "AI Insights",
+        "Prediction",
+        "Data"
+    ]
 )
 
-# FILE UPLOAD
-uploaded_file = st.file_uploader("Upload your dataset (CSV)", type=["csv"])
+# ---------------- FILE UPLOAD ----------------
+uploaded_file = st.file_uploader("Upload CSV Dataset", type=["csv"])
 
 if uploaded_file is not None:
 
-    # LOAD DATA
     df = pd.read_csv(uploaded_file)
 
     # ---------------- DATA CLEANING ----------------
     df = df.drop_duplicates()
-
-    # Remove unwanted columns like Unnamed:0
     df = df.loc[:, ~df.columns.str.contains("^Unnamed")]
-
-    # Reset index
     df = df.reset_index(drop=True)
 
-    # Convert date columns
     for col in df.columns:
         if "date" in col.lower():
             df[col] = pd.to_datetime(df[col], errors="coerce")
@@ -62,12 +63,15 @@ if uploaded_file is not None:
     categorical_cols = df.select_dtypes(include="object").columns.tolist()
     date_cols = df.select_dtypes(include="datetime").columns.tolist()
 
-    # FILTERS
+    # ---------------- FILTER ----------------
     st.sidebar.subheader("Filters")
 
     if categorical_cols:
 
-        filter_col = st.sidebar.selectbox("Filter Column", categorical_cols)
+        filter_col = st.sidebar.selectbox(
+            "Filter Column",
+            categorical_cols
+        )
 
         values = st.sidebar.multiselect(
             "Select Values",
@@ -77,7 +81,63 @@ if uploaded_file is not None:
         if values:
             df = df[df[filter_col].isin(values)]
 
-    # OVERVIEW
+    # ---------------- DOWNLOAD DATA ----------------
+    st.sidebar.subheader("Download Data")
+
+    csv_data = df.to_csv(index=False).encode("utf-8")
+
+    st.sidebar.download_button(
+        "Download Filtered Dataset",
+        csv_data,
+        "filtered_data.csv",
+        "text/csv"
+    )
+
+    summary = df.describe()
+
+    csv_summary = summary.to_csv().encode("utf-8")
+
+    st.sidebar.download_button(
+        "Download Summary Report",
+        csv_summary,
+        "summary_report.csv",
+        "text/csv"
+    )
+
+    # ---------------- PDF REPORT ----------------
+    def generate_pdf():
+
+        pdf = FPDF()
+        pdf.add_page()
+
+        pdf.set_font("Arial", size=12)
+
+        pdf.cell(200,10,"AI BI Dashboard Report",ln=True)
+
+        pdf.cell(200,10,f"Rows: {df.shape[0]}",ln=True)
+        pdf.cell(200,10,f"Columns: {df.shape[1]}",ln=True)
+
+        if numeric_cols:
+            highest = df[numeric_cols].sum().idxmax()
+            lowest = df[numeric_cols].sum().idxmin()
+
+            pdf.cell(200,10,f"Highest Metric: {highest}",ln=True)
+            pdf.cell(200,10,f"Lowest Metric: {lowest}",ln=True)
+
+        pdf.output("report.pdf")
+
+    if st.sidebar.button("Generate PDF Report"):
+
+        generate_pdf()
+
+        with open("report.pdf","rb") as f:
+            st.sidebar.download_button(
+                "Download PDF Report",
+                f,
+                "dashboard_report.pdf"
+            )
+
+    # ---------------- OVERVIEW ----------------
     if menu == "Overview":
 
         st.subheader("Dataset Overview")
@@ -87,56 +147,40 @@ if uploaded_file is not None:
         col1.metric("Rows",df.shape[0])
         col2.metric("Columns",df.shape[1])
         col3.metric("Missing Values",df.isnull().sum().sum())
-        col4.metric("Numeric Features",len(numeric_cols))
+        col4.metric("Numeric Columns",len(numeric_cols))
 
         st.dataframe(df.head())
 
-        st.subheader("Missing Value Analysis")
+    # ---------------- AUTO CHARTS ----------------
+    elif menu == "Auto Charts":
 
-        missing = df.isnull().sum()
-        missing_df = missing[missing > 0]
+        st.subheader("Automatic Charts")
 
-        st.dataframe(missing_df)
+        for col in numeric_cols:
 
-        csv = df.to_csv(index=False).encode("utf-8")
-
-        st.download_button(
-            "Download Clean Dataset",
-            csv,
-            "clean_dataset.csv",
-            "text/csv"
-        )
-
-    # CHARTS
-    elif menu == "Charts":
-
-        st.subheader("Automatic Data Visualization")
-
-        if numeric_cols:
-
-            selected_num = st.selectbox(
-                "Select Numeric Column",
-                numeric_cols
+            fig = px.histogram(
+                df,
+                x=col,
+                title=f"{col} Distribution"
             )
-
-            fig = px.histogram(df,x=selected_num)
 
             st.plotly_chart(fig,use_container_width=True)
 
-        if categorical_cols:
+        for col in categorical_cols:
 
-            selected_cat = st.selectbox(
-                "Select Categorical Column",
-                categorical_cols
+            top = df[col].value_counts().nlargest(10).reset_index()
+            top.columns=[col,"Count"]
+
+            fig = px.bar(
+                top,
+                x=col,
+                y="Count",
+                title=f"{col} Distribution"
             )
 
-            top = df[selected_cat].value_counts().nlargest(10).reset_index()
-            top.columns=[selected_cat,"Count"]
-
-            fig = px.bar(top,x=selected_cat,y="Count")
             st.plotly_chart(fig,use_container_width=True)
 
-    # CORRELATION
+    # ---------------- CORRELATION ----------------
     elif menu == "Correlation":
 
         if len(numeric_cols)>1:
@@ -157,23 +201,28 @@ if uploaded_file is not None:
             sns.heatmap(corr,annot=True,cmap="coolwarm",ax=ax)
             st.pyplot(fig2)
 
-    # AI INSIGHTS
+    # ---------------- AI INSIGHTS ----------------
     elif menu == "AI Insights":
 
-        st.subheader("AI Automated Insights")
+        st.subheader("🤖 AI Generated Insights")
 
         if numeric_cols:
 
             highest_col = df[numeric_cols].sum().idxmax()
             lowest_col = df[numeric_cols].sum().idxmin()
 
+            max_value = df[numeric_cols].max().max()
+
             st.success(f"Highest overall metric: {highest_col}")
             st.warning(f"Lowest overall metric: {lowest_col}")
-
-            max_value = df[numeric_cols].max().max()
             st.info(f"Maximum value in dataset: {max_value}")
 
-    # PREDICTION
+            st.write(
+                f"The dataset indicates that **{highest_col}** contributes the highest values "
+                f"while **{lowest_col}** contributes the lowest values."
+            )
+
+    # ---------------- PREDICTION ----------------
     elif menu == "Prediction":
 
         st.subheader("Machine Learning Prediction")
@@ -194,9 +243,11 @@ if uploaded_file is not None:
 
             score=model.score(X_test,y_test)
 
-            st.success(f"Model Accuracy: {round(score*100,2)}%")
+            st.success(f"Model Accuracy: {round(score*1000,2)}%")
 
-    # DATA
+
+
+    # ---------------- DATA ----------------
     elif menu == "Data":
 
         st.subheader("Full Dataset")
@@ -215,7 +266,8 @@ if uploaded_file is not None:
         col3.write(date_cols)
 
 else:
-    st.info("Please upload a CSV dataset to start analysis.")
+
+    st.info("Upload a CSV dataset to start analysis")
 
 st.markdown("---")
 st.markdown("AI Powered Automated BI Dashboard")
