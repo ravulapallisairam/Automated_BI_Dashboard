@@ -10,10 +10,10 @@ from fpdf import FPDF
 
 warnings.filterwarnings("ignore")
 
-# ---------------- PAGE CONFIG ----------------
-st.set_page_config(page_title="Automated AI BI Dashboard", layout="wide")
+#  PAGE CONFIG 
+st.set_page_config(page_title="Automated BI Dashboard Generator", layout="wide")
 
-# ---------------- STYLE ----------------
+#  STYLE 
 st.markdown("""
 <style>
 .stApp {
@@ -26,9 +26,9 @@ font-size:28px;
 </style>
 """, unsafe_allow_html=True)
 
-st.title("🚀 Automated AI Business Intelligence Dashboard")
+st.title("🚀 Automated BI Dashboard Generator")
 
-# ---------------- SIDEBAR ----------------
+#  SIDEBAR 
 st.sidebar.title("Dashboard Menu")
 
 menu = st.sidebar.radio(
@@ -43,14 +43,14 @@ menu = st.sidebar.radio(
     ]
 )
 
-# ---------------- FILE UPLOAD ----------------
+#  FILE UPLOAD 
 uploaded_file = st.file_uploader("Upload CSV Dataset", type=["csv"])
 
 if uploaded_file is not None:
 
     df = pd.read_csv(uploaded_file)
 
-    # ---------------- DATA CLEANING ----------------
+    # DATA CLEANING 
     df = df.drop_duplicates()
     df = df.loc[:, ~df.columns.str.contains("^Unnamed")]
     df = df.reset_index(drop=True)
@@ -63,7 +63,7 @@ if uploaded_file is not None:
     categorical_cols = df.select_dtypes(include="object").columns.tolist()
     date_cols = df.select_dtypes(include="datetime").columns.tolist()
 
-    # ---------------- FILTER ----------------
+    # FILTER 
     st.sidebar.subheader("Filters")
 
     if categorical_cols:
@@ -81,7 +81,7 @@ if uploaded_file is not None:
         if values:
             df = df[df[filter_col].isin(values)]
 
-    # ---------------- DOWNLOAD DATA ----------------
+    #  DOWNLOAD DATA 
     st.sidebar.subheader("Download Data")
 
     csv_data = df.to_csv(index=False).encode("utf-8")
@@ -104,7 +104,7 @@ if uploaded_file is not None:
         "text/csv"
     )
 
-    # ---------------- PDF REPORT ----------------
+    #  PDF REPORT 
     def generate_pdf():
 
         pdf = FPDF()
@@ -112,7 +112,7 @@ if uploaded_file is not None:
 
         pdf.set_font("Arial", size=12)
 
-        pdf.cell(200,10,"AI BI Dashboard Report",ln=True)
+        pdf.cell(200,10,"BI Dashboard Report",ln=True)
 
         pdf.cell(200,10,f"Rows: {df.shape[0]}",ln=True)
         pdf.cell(200,10,f"Columns: {df.shape[1]}",ln=True)
@@ -137,7 +137,7 @@ if uploaded_file is not None:
                 "dashboard_report.pdf"
             )
 
-    # ---------------- OVERVIEW ----------------
+    #  OVERVIEW 
     if menu == "Overview":
 
         st.subheader("Dataset Overview")
@@ -151,7 +151,7 @@ if uploaded_file is not None:
 
         st.dataframe(df.head())
 
-    # ---------------- AUTO CHARTS ----------------
+    # AUTO CHARTS 
     elif menu == "Auto Charts":
 
         st.subheader("Automatic Charts")
@@ -180,7 +180,7 @@ if uploaded_file is not None:
 
             st.plotly_chart(fig,use_container_width=True)
 
-    # ---------------- CORRELATION ----------------
+    #  CORRELATION 
     elif menu == "Correlation":
 
         if len(numeric_cols)>1:
@@ -201,10 +201,10 @@ if uploaded_file is not None:
             sns.heatmap(corr,annot=True,cmap="coolwarm",ax=ax)
             st.pyplot(fig2)
 
-    # ---------------- AI INSIGHTS ----------------
+    #  AI INSIGHTS 
     elif menu == "AI Insights":
 
-        st.subheader("🤖 AI Generated Insights")
+        st.subheader("AI Generated Insights")
 
         if numeric_cols:
 
@@ -222,7 +222,7 @@ if uploaded_file is not None:
                 f"while **{lowest_col}** contributes the lowest values."
             )
 
-    # ---------------- PREDICTION ----------------
+    #  PREDICTION
     elif menu == "Prediction":
 
         st.subheader("Machine Learning Prediction")
@@ -243,11 +243,11 @@ if uploaded_file is not None:
 
             score=model.score(X_test,y_test)
 
-            st.success(f"Model Accuracy: {round(score*1000,2)}%")
+            st.success(f"Model Accuracy: {round(score*100,2)}%")
 
 
 
-    # ---------------- DATA ----------------
+    # DATA 
     elif menu == "Data":
 
         st.subheader("Full Dataset")
@@ -270,4 +270,4 @@ else:
     st.info("Upload a CSV dataset to start analysis")
 
 st.markdown("---")
-st.markdown("AI Powered Automated BI Dashboard")
+st.markdown("Automated BI Dashboard Generator")
