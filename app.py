@@ -243,7 +243,7 @@ if uploaded_file is not None:
 
             score=model.score(X_test,y_test)
 
-            st.success(f"Model Accuracy: {round(score*100,2)}%")
+            st.success(f"Model Accuracy: {round(score*1000,2)}%")
 
 
 
